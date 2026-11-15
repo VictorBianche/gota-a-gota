@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gota a Gota — Quiz do uso consciente da água</title>
+  <meta name="description" content="Quiz anônimo e rápido para descobrir quanta água você usa por dia e como economizar." />
+  <meta name="theme-color" content="#0b6fa4" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app" class="wrap" aria-live="polite">
+    <!-- INÍCIO -->
+    <section id="tela-inicio" class="tela ativa">
+      <div class="gota-hero" aria-hidden="true">
+        <svg viewBox="0 0 100 130"><path d="M50 4C50 4 10 56 10 84a40 40 0 0 0 80 0C90 56 50 4 50 4Z" /></svg>
+      </div>
+      <h1>Gota a Gota</h1>
+      <p class="lead">Quanta água <strong>você</strong> usa por dia?</p>
+      <p class="sub">São 11 perguntas rápidas sobre a sua rotina. No final, você vê o seu consumo estimado — em litros, baldes e caixas d'água — e dicas para economizar.</p>
+      <ul class="selos">
+        <li>⏱️ 2 minutos</li>
+        <li>🕶️ 100% anônimo</li>
+        <li>📱 Sem cadastro</li>
+      </ul>
+      <button class="btn primario grande" id="btn-comecar">Começar o quiz</button>
+      <p class="mini">Seja honesto(a): ninguém vai saber quem respondeu. 😉</p>
+    </section>
+
+    <!-- PERGUNTA -->
+    <section id="tela-pergunta" class="tela">
+      <div class="topo">
+        <button class="btn link" id="btn-voltar" aria-label="Voltar à pergunta anterior">← Voltar</button>
+        <span id="contador" class="contador"></span>
+      </div>
+      <div class="progresso" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="barra"></span></div>
+      <div class="cartao">
+        <div class="icone" id="p-icone" aria-hidden="true"></div>
+        <h2 id="p-texto"></h2>
+        <p class="reflexao" id="p-reflexao"></p>
+        <div class="opcoes" id="p-opcoes" role="radiogroup"></div>
+      </div>
+    </section>
+
+    <!-- RESULTADO -->
+    <section id="tela-resultado" class="tela">
+      <p class="eyebrow">Seu consumo estimado</p>
+      <div class="resultado-hero">
+        <svg id="tanque" class="tanque" viewBox="0 0 160 260" role="img" aria-labelledby="tanque-desc">
+          <desc id="tanque-desc"></desc>
+          <defs>
+            <clipPath id="clip-tanque"><rect x="20" y="20" width="120" height="220" rx="16" /></clipPath>
+            <linearGradient id="grad-agua" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" class="agua-1" />
+              <stop offset="1" class="agua-2" />
+            </linearGradient>
+          </defs>
+          <rect x="20" y="20" width="120" height="220" rx="16" class="tanque-fundo" />
+          <g clip-path="url(#clip-tanque)">
+            <g id="agua" transform="translate(0,240)">
+              <path class="onda" d="M0 6 Q 20 0 40 6 T 80 6 T 120 6 T 160 6 T 200 6 T 240 6 V 400 H 0 Z" fill="url(#grad-agua)" />
+            </g>
+          </g>
+          <g id="refs"></g>
+          <rect x="20" y="20" width="120" height="220" rx="16" class="tanque-borda" />
+        </svg>
+        <div class="resultado-num">
+          <div><span id="r-litros" class="numero">0</span><span class="unidade">litros<br />por dia</span></div>
+          <p id="r-nivel" class="nivel"></p>
+          <p id="r-comparacao" class="comparacao"></p>
+        </div>
+      </div>
+
+      <h3>Para materializar…</h3>
+      <div class="galoes-box">
+        <p id="r-galoes-txt"></p>
+        <div id="r-galoes" class="galoes" aria-hidden="true"></div>
+      </div>
+      <div class="equivalencias">
+        <div class="eq"><span id="r-mes" class="eq-num"></span><span class="eq-lbl">litros por mês</span><span id="r-mes-eq" class="eq-extra"></span></div>
+        <div class="eq"><span id="r-ano" class="eq-num"></span><span class="eq-lbl">litros por ano</span><span id="r-ano-eq" class="eq-extra"></span></div>
+      </div>
+
+      <h3>Para onde vai a sua água</h3>
+      <div id="r-barras" class="barras"></div>
+
+      <div id="r-dicas-box">
+        <h3>Onde você pode economizar</h3>
+        <ul id="r-dicas" class="dicas"></ul>
+      </div>
+
+      <p class="nota">* Estimativa educativa por pessoa, baseada em médias de consumo de referência. Seu consumo real pode variar.</p>
+
+      <!-- FEEDBACK -->
+      <form id="form-feedback" class="cartao feedback">
+        <h3>O que você achou do quiz?</h3>
+        <fieldset>
+          <legend>De 0 a 5, quanto você recomendaria este quiz para alguém?</legend>
+          <div class="nps" id="nps"></div>
+          <div class="nps-legenda"><span>Nada provável</span><span>Muito provável</span></div>
+        </fieldset>
+        <label for="sugestao">Sugestões (opcional)</label>
+        <textarea id="sugestao" maxlength="1000" rows="3" placeholder="Como podemos melhorar? Alguma pergunta que faltou?"></textarea>
+        <button class="btn primario" type="submit" id="btn-enviar" disabled>Enviar avaliação</button>
+        <p id="fb-erro" class="erro" hidden></p>
+      </form>
+      <div id="obrigado" class="cartao obrigado" hidden>
+        <p class="grande-emoji" aria-hidden="true">💙</p>
+        <h3>Obrigado pela participação!</h3>
+        <p>Cada gota conta. Compartilhe o quiz com quem você conhece.</p>
+      </div>
+
+      <div class="acoes">
+        <button class="btn secundario" id="btn-compartilhar">Compartilhar</button>
+        <button class="btn link" id="btn-refazer">Refazer o quiz</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

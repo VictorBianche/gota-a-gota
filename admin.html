@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Painel — Gota a Gota</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .wrap.admin { max-width: 1100px; }
+    .cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .cab h1 { font-size: 1.6rem; margin: 0; }
+    .cab .acoes { margin: 0; }
+    .login { max-width: 380px; margin: 12vh auto 0; }
+    .login input { width: 100%; font: inherit; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--bg); color: var(--text); margin-bottom: 12px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .kpi .v { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; display: block; }
+    .kpi .l { color: var(--muted); font-size: .85rem; }
+    .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-top: 14px; }
+    .grade .cartao { padding: 18px; }
+    .grade h2 { font-size: 1.05rem; margin-bottom: 12px; }
+    .colunas { display: flex; align-items: flex-end; gap: 3px; height: 160px; border-bottom: 1px solid var(--line); }
+    .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; height: 100%; position: relative; }
+    .col span { display: block; border-radius: 3px 3px 0 0; }
+    .col .a { background: var(--water-1); }
+    .col .c { background: var(--water-2); }
+    .col:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); font-size: .75rem; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; }
+    .eixo { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); margin-top: 4px; }
+    .legenda { display: flex; gap: 14px; font-size: .8rem; color: var(--muted); margin-top: 8px; }
+    .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
+    .hbar { display: grid; grid-template-columns: minmax(90px, 40%) 1fr 3.5em; gap: 8px; align-items: center; font-size: .88rem; margin-bottom: 6px; }
+    .hbar .t { height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
+    .hbar .t span { display: block; height: 100%; background: var(--water-2); border-radius: 99px; }
+    .hbar .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    details.perg { border-top: 1px solid var(--line); padding: 10px 0; }
+    details.perg summary { cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+    details.perg summary small { color: var(--muted); font-weight: 400; white-space: nowrap; }
+    details.perg .corpo { padding-top: 10px; }
+    .sug { border-top: 1px solid var(--line); padding: 10px 0; }
+    .sug p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .sug small { color: var(--muted); }
+    .lista { max-height: 420px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+    .vazio { color: var(--muted); font-style: italic; }
+    .full { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <main class="wrap admin">
+    <section id="tela-login" class="cartao login" hidden>
+      <h1 style="font-size:1.5rem">💧 Painel administrativo</h1>
+      <form id="form-login">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" required />
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" autocomplete="current-password" required />
+        <button class="btn primario" type="submit" style="width:100%">Entrar</button>
+        <p id="login-erro" class="erro" hidden></p>
+      </form>
+    </section>
+
+    <section id="painel" hidden>
+      <div class="cab">
+        <h1>💧 Gota a Gota — Painel</h1>
+        <div class="acoes">
+          <button class="btn secundario" id="btn-atualizar">Atualizar</button>
+          <button class="btn secundario" id="btn-csv">Exportar CSV</button>
+          <button class="btn link" id="btn-sair">Sair</button>
+        </div>
+      </div>
+      <p id="atualizado" class="mini" style="margin-top:0"></p>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="grade">
+        <div class="cartao full">
+          <h2>Acessos e quizzes concluídos — últimos 30 dias</h2>
+          <div class="colunas" id="g-dias"></div>
+          <div class="eixo" id="g-dias-eixo"></div>
+          <div class="legenda"><span><i style="background:var(--water-1)"></i>Acessos</span><span><i style="background:var(--water-2)"></i>Concluídos</span></div>
+        </div>
+        <div class="cartao">
+          <h2>Distribuição do consumo (L/pessoa/dia)</h2>
+          <div id="g-faixas"></div>
+        </div>
+        <div class="cartao">
+          <h2>Média de litros por atividade</h2>
+          <div id="g-atividades"></div>
+        </div>
+        <div class="cartao">
+          <h2>Avaliação do quiz (0 a 5)</h2>
+          <div id="g-nps"></div>
+        </div>
+        <div class="cartao">
+          <h2>Sugestões recebidas <span id="n-sug" class="mini"></span></h2>
+          <div id="sugestoes" class="lista"></div>
+        </div>
+        <div class="cartao full">
+          <h2>Respostas por pergunta</h2>
+          <div id="perguntas"></div>
+        </div>
+        <div class="cartao full">
+          <h2>Resultados recentes</h2>
+          <div class="lista"><table><thead><tr><th>Data</th><th>Litros/dia</th><th>Nota</th></tr></thead><tbody id="recentes"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="questions.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
