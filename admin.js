@@ -140,28 +140,191 @@
     }
   }
 
-  function exportarCsv() {
-    const esc = (v) => {
-      const s = v === undefined || v === null ? '' : String(v);
-      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const head = ['concluido_em', 'litros_dia', ...Q.perguntas.map((p) => p.id), 'nota_0a5', 'sugestao'];
-    const rows = ultimo._concluidos
-      .slice()
-      .sort((a, b) => a.t - b.t)
-      .map((s) => [
-        new Date(s.t).toISOString(),
-        s.total,
-        ...Q.perguntas.map((p, i) => p.opcoes[s.respostas[i]]?.t ?? ''),
-        s.nota ?? '',
-        s.sugestao ?? '',
-      ]);
-    const csv = '﻿' + [head, ...rows].map((r) => r.map(esc).join(',')).join('\n');
-    const a = el('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = `resultados-quiz-agua-${diaLocal(new Date())}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  // ---------- Exportar PDF ----------
+  function carregarScript(src) {
+    return new Promise((ok, erro) => {
+      const sc = document.createElement('script');
+      sc.src = src;
+      sc.onload = ok;
+      sc.onerror = () => erro(new Error('Falha ao carregar ' + src));
+      document.head.append(sc);
+    });
+  }
+  let libsPdf = null;
+  function carregarPdf() {
+    if (!libsPdf) {
+      libsPdf = carregarScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js').then(() =>
+        carregarScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js')
+      );
+      libsPdf.catch(() => (libsPdf = null));
+    }
+    return libsPdf.then(() => window.jspdf.jsPDF);
+  }
+  // As fontes padrão do PDF não têm emojis nem alguns símbolos: remove o que não for Latin-1
+  const txt = (v) =>
+    String(v ?? '')
+      .replace(/[–—]/g, '-')
+      .replace(/…/g, '...')
+      .replace(/[^\x00-\xFF]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  async function exportarPdf() {
+    const btn = $('btn-pdf');
+    btn.disabled = true;
+    btn.textContent = 'Gerando…';
+    try {
+      const JsPDF = await carregarPdf();
+      const s = ultimo;
+      const doc = new JsPDF({ unit: 'pt', format: 'a4' });
+      const M = 40;
+      const H = doc.internal.pageSize.getHeight();
+      const AZUL = [11, 111, 164];
+      const TINTA = [16, 40, 58];
+      let y = M;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(...AZUL);
+      doc.text('Gota a Gota - Relatório do quiz', M, y);
+      y += 16;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(90);
+      doc.text(txt(`Gerado em ${data(s.geradoEm)} · Consumo estimado em litros por pessoa por dia`), M, y);
+
+      const secao = (titulo) => {
+        y += 26;
+        if (y > H - 90) {
+          doc.addPage();
+          y = M;
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(...TINTA);
+        doc.text(txt(titulo), M, y);
+        y += 6;
+      };
+      // Tabela; se "barra" for passado, desenha uma barra proporcional na última coluna
+      const tabela = (head, body, barra, extra = {}) => {
+        const max = barra ? Math.max(1, ...barra.map((v) => Math.abs(v))) : 0;
+        doc.autoTable({
+          startY: y,
+          head: [head.map(txt)],
+          body: body.map((r) => r.map(txt)),
+          margin: { left: M, right: M },
+          theme: 'grid',
+          styles: { fontSize: 9, cellPadding: 4, textColor: TINTA, lineColor: [212, 228, 238] },
+          headStyles: { fillColor: AZUL, textColor: 255 },
+          columnStyles: barra ? { [head.length - 1]: { cellWidth: 140 } } : {},
+          didDrawCell: (d) => {
+            if (!barra || d.section !== 'body' || d.column.index !== head.length - 1) return;
+            const v = barra[d.row.index] || 0;
+            const w = ((d.cell.width - 8) * Math.abs(v)) / max;
+            doc.setFillColor(...(v < 0 ? [31, 138, 91] : AZUL));
+            doc.rect(d.cell.x + 4, d.cell.y + d.cell.height / 2 - 3, w, 6, 'F');
+          },
+          ...extra,
+        });
+        y = doc.lastAutoTable.finalY;
+      };
+      const pct = (q, tot) => (tot ? Math.round((q / tot) * 100) + '%' : '0%');
+
+      secao('Resumo');
+      const taxa = s.iniciados ? Math.round((s.concluidos / s.iniciados) * 100) : 0;
+      tabela(
+        ['Indicador', 'Valor'],
+        [
+          ['Acessos (total)', fmt(s.acessos)],
+          ['Visitantes únicos (aprox.)', fmt(s.visitantesUnicos)],
+          ['Quizzes iniciados', fmt(s.iniciados)],
+          ['Quizzes concluídos', `${fmt(s.concluidos)} (${taxa}%)`],
+          ['Consumo médio', s.concluidos ? fmt(s.mediaLitros) + ' L/dia' : '-'],
+          ['Mediana (mín. / máx.)', s.concluidos ? `${fmt(s.medianaLitros)} L (${s.minLitros} / ${s.maxLitros})` : '-'],
+          ['Nota média (0 a 5)', s.nps.media !== null ? `${s.nps.media.toLocaleString('pt-BR')} (${s.feedbacks} avaliações)` : '-'],
+        ],
+        null,
+        { columnStyles: { 0: { cellWidth: 220, fontStyle: 'bold' } } }
+      );
+
+      const dias = s.porDia.filter((d) => d.acessos || d.concluidos);
+      secao('Acessos por dia (últimos 30 dias)');
+      if (dias.length)
+        tabela(
+          ['Dia', 'Acessos', 'Concluídos', ''],
+          dias.map((d) => [d.dia.split('-').reverse().join('/'), d.acessos, d.concluidos, '']),
+          dias.map((d) => d.acessos)
+        );
+      else tabela(['Dia', 'Acessos', 'Concluídos'], [['Sem acessos no período', '', '']]);
+
+      secao('Distribuição do consumo (L/pessoa/dia)');
+      tabela(
+        ['Faixa', 'Pessoas', '%', ''],
+        s.faixas.map((f) => [f.rotulo, f.qtd, pct(f.qtd, s.concluidos), '']),
+        s.faixas.map((f) => f.qtd)
+      );
+
+      const ativ = s.perguntas.slice().sort((a, b) => b.mediaLitros - a.mediaLitros);
+      secao('Média de litros por atividade');
+      tabela(
+        ['Atividade', 'Média (L/dia)', ''],
+        ativ.map((p) => [p.rotulo, fmt(p.mediaLitros), '']),
+        ativ.map((p) => p.mediaLitros)
+      );
+
+      secao('Avaliação do quiz (0 a 5)');
+      const notas = [5, 4, 3, 2, 1, 0];
+      tabela(
+        ['Nota', 'Avaliações', '%', ''],
+        notas.map((n) => [n, s.nps.distribuicao[n], pct(s.nps.distribuicao[n], s.feedbacks), '']),
+        notas.map((n) => s.nps.distribuicao[n])
+      );
+
+      secao('Respostas por pergunta');
+      s.perguntas.forEach((p) => {
+        y += 8;
+        if (y + 22 * (p.opcoes.length + 1) > H - 50) {
+          doc.addPage(); // não divide a tabela de uma pergunta entre duas páginas
+          y = M;
+        }
+        const tot = p.opcoes.reduce((a, o) => a + o.qtd, 0);
+        tabela(
+          [p.pergunta, 'L/dia', 'Pessoas', '%', ''],
+          p.opcoes.map((o) => [o.texto, o.litros, o.qtd, pct(o.qtd, tot), '']),
+          p.opcoes.map((o) => o.qtd),
+          { columnStyles: { 4: { cellWidth: 90 } }, rowPageBreak: 'avoid' }
+        );
+      });
+
+      secao(`Sugestões (${s.sugestoes.length})`);
+      tabela(
+        ['Data', 'Nota', 'L/dia', 'Sugestão'],
+        s.sugestoes.length ? s.sugestoes.map((x) => [data(x.t), x.nps, x.total, x.texto]) : [['-', '-', '-', 'Nenhuma sugestão ainda.']],
+        null,
+        { columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 36 }, 2: { cellWidth: 40 } } }
+      );
+
+      const todos = s._concluidos.slice().sort((a, b) => b.t - a.t);
+      secao(`Todos os resultados (${todos.length})`);
+      tabela(
+        ['Data', 'L/dia', 'Nota'],
+        todos.length ? todos.map((r) => [data(r.t), fmt(r.total), r.nota ?? '-']) : [['Nenhum resultado ainda.', '', '']]
+      );
+
+      const paginas = doc.getNumberOfPages();
+      for (let i = 1; i <= paginas; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(130);
+        doc.text(`Página ${i} de ${paginas}`, doc.internal.pageSize.getWidth() - M, H - 20, { align: 'right' });
+      }
+      doc.save(`relatorio-quiz-agua-${diaLocal(new Date())}.pdf`);
+    } catch (e) {
+      alert('Não foi possível gerar o PDF: ' + (e.message || e));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Exportar PDF';
+    }
   }
 
   function hbars(container, linhas, sufixo = '') {
@@ -300,7 +463,7 @@
     await sb.auth.signOut();
     mostrarLogin();
   });
-  $('btn-csv').addEventListener('click', () => ultimo && exportarCsv());
+  $('btn-pdf').addEventListener('click', () => ultimo && exportarPdf());
 
   if (!sb) {
     $('tela-login').hidden = false;

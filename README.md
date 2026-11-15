@@ -44,7 +44,7 @@ python3 -m http.server 8000
 - Consumo médio, mediana, mínimo e máximo, e distribuição por faixas
 - Média de litros por atividade e distribuição das respostas de cada pergunta
 - Nota média (0–5), distribuição das notas e sugestões
-- Exportação em CSV
+- Exportação de relatório em PDF
 
 ## Segurança e anonimato
 - Nenhum dado pessoal é coletado: sem cadastro, sem IP, sem cookies de rastreamento. O navegador guarda
