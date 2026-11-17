@@ -48,21 +48,6 @@
     const totals = done.map((s) => s.total).sort((a, b) => a - b);
     const comNota = done.filter((s) => Number.isInteger(s.nota));
 
-    const porDia = [];
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(hoje);
-      d.setDate(d.getDate() - i);
-      porDia.push({ dia: diaLocal(d), acessos: 0, concluidos: 0 });
-    }
-    const idx = Object.fromEntries(porDia.map((d, i) => [d.dia, i]));
-    for (const a of acessos.por_dia || []) if (idx[a.dia] !== undefined) porDia[idx[a.dia]].acessos = a.acessos;
-    for (const s of done) {
-      const i = idx[diaLocal(new Date(s.t))];
-      if (i !== undefined) porDia[i].concluidos++;
-    }
-
     const limites = [110, 150, 250, 400, Infinity];
     const faixas = ['Até 110 L', '111–150 L', '151–250 L', '251–400 L', 'Mais de 400 L'].map((rotulo) => ({ rotulo, qtd: 0 }));
     for (const t of totals) faixas[limites.findIndex((lim) => t <= lim)].qtd++;
@@ -100,7 +85,6 @@
       medianaLitros: mediana,
       minLitros: totals[0] || 0,
       maxLitros: totals[n - 1] || 0,
-      porDia,
       faixas,
       perguntas,
       nps: { media: comNota.length ? +(comNota.reduce((a, s) => a + s.nota, 0) / comNota.length).toFixed(2) : null, distribuicao: dist },
@@ -242,16 +226,6 @@
         { columnStyles: { 0: { cellWidth: 220, fontStyle: 'bold' } } }
       );
 
-      const dias = s.porDia.filter((d) => d.acessos || d.concluidos);
-      secao('Acessos por dia (últimos 30 dias)');
-      if (dias.length)
-        tabela(
-          ['Dia', 'Acessos', 'Concluídos', ''],
-          dias.map((d) => [d.dia.split('-').reverse().join('/'), d.acessos, d.concluidos, '']),
-          dias.map((d) => d.acessos)
-        );
-      else tabela(['Dia', 'Acessos', 'Concluídos'], [['Sem acessos no período', '', '']]);
-
       secao('Distribuição do consumo (L/pessoa/dia)');
       tabela(
         ['Faixa', 'Pessoas', '%', ''],
@@ -351,26 +325,6 @@
       d.append(el('span', 'v', v), el('span', 'l', l));
       k.append(d);
     });
-
-    // Acessos por dia
-    const g = $('g-dias');
-    g.innerHTML = '';
-    const maxDia = Math.max(1, ...s.porDia.map((d) => d.acessos), ...s.porDia.map((d) => d.concluidos));
-    s.porDia.forEach((d) => {
-      const col = el('div', 'col');
-      const [, m, dd] = d.dia.split('-');
-      col.dataset.tip = `${dd}/${m}: ${d.acessos} acessos, ${d.concluidos} concluídos`;
-      const a = el('span', 'a');
-      a.style.height = (Math.max(0, d.acessos - d.concluidos) / maxDia) * 100 + '%';
-      const c = el('span', 'c');
-      c.style.height = (Math.min(d.concluidos, d.acessos || d.concluidos) / maxDia) * 100 + '%';
-      col.append(a, c);
-      g.append(col);
-    });
-    const p0 = s.porDia[0].dia.split('-'),
-      p1 = s.porDia[s.porDia.length - 1].dia.split('-');
-    $('g-dias-eixo').innerHTML = '';
-    $('g-dias-eixo').append(el('span', '', `${p0[2]}/${p0[1]}`), el('span', '', `${p1[2]}/${p1[1]}`));
 
     hbars($('g-faixas'), s.faixas.map((f) => ({ r: f.rotulo, v: f.qtd })));
 
