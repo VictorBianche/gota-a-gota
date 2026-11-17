@@ -108,11 +108,6 @@
         .filter((s) => s.sugestao)
         .sort((a, b) => ms(b.avaliado_em) - ms(a.avaliado_em))
         .map((s) => ({ t: ms(s.avaliado_em), nps: s.nota, total: s.total, texto: s.sugestao })),
-      resultadosRecentes: done
-        .slice()
-        .sort((a, b) => b.t - a.t)
-        .slice(0, 100)
-        .map((s) => ({ t: s.t, total: s.total, nps: s.nota ?? null })),
       _concluidos: done,
     };
   }
@@ -304,13 +299,6 @@
         { columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 36 }, 2: { cellWidth: 40 } } }
       );
 
-      const todos = s._concluidos.slice().sort((a, b) => b.t - a.t);
-      secao(`Todos os resultados (${todos.length})`);
-      tabela(
-        ['Data', 'L/dia', 'Nota'],
-        todos.length ? todos.map((r) => [data(r.t), fmt(r.total), r.nota ?? '-']) : [['Nenhum resultado ainda.', '', '']]
-      );
-
       const paginas = doc.getNumberOfPages();
       for (let i = 1; i <= paginas; i++) {
         doc.setPage(i);
@@ -429,22 +417,6 @@
       corpo.querySelectorAll('.hbar .n').forEach((n, i) => (n.textContent = `${Math.round((p.opcoes[i].qtd / tot) * 100)}%`));
       det.append(sum, corpo);
       pq.append(det);
-    });
-
-    // Recentes
-    const tb = $('recentes');
-    tb.innerHTML = '';
-    if (!s.resultadosRecentes.length) {
-      const tr = el('tr');
-      const td = el('td', 'vazio', 'Nenhum resultado ainda.');
-      td.colSpan = 3;
-      tr.append(td);
-      tb.append(tr);
-    }
-    s.resultadosRecentes.forEach((r) => {
-      const tr = el('tr');
-      tr.append(el('td', '', data(r.t)), el('td', '', fmt(r.total) + ' L'), el('td', '', r.nps ?? '—'));
-      tb.append(tr);
     });
   }
 
