@@ -107,7 +107,7 @@
       sugestoes: done
         .filter((s) => s.sugestao)
         .sort((a, b) => ms(b.avaliado_em) - ms(a.avaliado_em))
-        .map((s) => ({ t: ms(s.avaliado_em), nps: s.nota, total: s.total, texto: s.sugestao })),
+        .map((s) => ({ nps: s.nota, total: s.total, texto: s.sugestao })),
       _concluidos: done,
     };
   }
@@ -293,10 +293,10 @@
 
       secao(`Sugestões (${s.sugestoes.length})`);
       tabela(
-        ['Data', 'Nota', 'L/dia', 'Sugestão'],
-        s.sugestoes.length ? s.sugestoes.map((x) => [data(x.t), x.nps, x.total, x.texto]) : [['-', '-', '-', 'Nenhuma sugestão ainda.']],
+        ['Nota', 'L/dia', 'Sugestão'],
+        s.sugestoes.length ? s.sugestoes.map((x) => [x.nps, x.total, x.texto]) : [['-', '-', 'Nenhuma sugestão ainda.']],
         null,
-        { columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 36 }, 2: { cellWidth: 40 } } }
+        { columnStyles: { 0: { cellWidth: 36 }, 1: { cellWidth: 40 } } }
       );
 
       const paginas = doc.getNumberOfPages();
@@ -393,7 +393,7 @@
     if (!s.sugestoes.length) sug.append(el('p', 'vazio', 'Nenhuma sugestão ainda.'));
     s.sugestoes.forEach((x) => {
       const d = el('div', 'sug');
-      d.append(el('p', '', x.texto), el('small', '', `${data(x.t)} · nota ${x.nps} · ${x.total} L/dia`));
+      d.append(el('p', '', x.texto), el('small', '', `nota ${x.nps} · ${x.total} L/dia`));
       sug.append(d);
     });
 
